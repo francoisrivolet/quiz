@@ -7,3 +7,4 @@ Ressources :
 - cours openclassroom : https://openclassrooms.com/fr/courses/6390246-passez-au-fullstack-avec-node-js-express-et-mongodb
 - Socket.io : https://socket.io/docs/v4/
 - node.js :
+- repo quiz application with node + socket.io : https://github.com/Fares-Khanchouch/multiplayer-quiz-app
