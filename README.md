@@ -8,3 +8,4 @@ Ressources :
 - Socket.io : https://socket.io/docs/v4/
 - node.js :
 - repo quiz application with node + socket.io : https://github.com/Fares-Khanchouch/multiplayer-quiz-app
+- https://dev.to/zoppatorsk/lets-build-a-multiplayer-movie-triviaquiz-game-with-socketio-svelte-and-node-devlog-3-3ij
