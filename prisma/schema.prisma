@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ─── Quiz ────────────────────────────────────────────────────────────────────
+
+enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  FREE_TEXT
+}
+
+enum SessionStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+model Quiz {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  questions   Question[]
+  sessions    GameSession[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Question {
+  id            String           @id @default(cuid())
+  quizId        String
+  quiz          Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text          String
+  type          QuestionType     @default(SINGLE_CHOICE)
+  order         Int
+  duration      Int              @default(30)
+  points        Int              @default(100)
+  answers       QuestionAnswer[]
+  playerAnswers PlayerAnswer[]
+}
+
+model QuestionAnswer {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+}
+
+model GameSession {
+  id                   String          @id @default(cuid())
+  code                 String          @unique
+  quizId               String
+  quiz                 Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  status               SessionStatus   @default(WAITING)
+  currentQuestionIndex Int             @default(-1)
+  players              SessionPlayer[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+model SessionPlayer {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   GameSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nickname  String
+  score     Int            @default(0)
+  answers   PlayerAnswer[]
+  createdAt DateTime       @default(now())
+}
+
+model PlayerAnswer {
+  id              String        @id @default(cuid())
+  sessionPlayerId String
+  player          SessionPlayer @relation(fields: [sessionPlayerId], references: [id], onDelete: Cascade)
+  questionId      String
+  question        Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer          String
+  isCorrect       Boolean       @default(false)
+  pointsEarned    Int           @default(0)
+  createdAt       DateTime      @default(now())
+}

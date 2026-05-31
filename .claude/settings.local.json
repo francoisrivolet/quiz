@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item *)",
+      "PowerShell(docker exec quiz-db *)",
+      "PowerShell(cd C:\\\\Fanfan\\\\dev\\\\quiz; $env:DATABASE_URL=\"postgresql://quiz:quiz@localhost:5432/quiz?sslmode=disable\"; npx prisma db push 2>&1)",
+      "PowerShell(Get-ChildItem \"C:\\\\Fanfan\\\\dev\\\\quiz\\\\node_modules\\\\prisma\" -Recurse -Name | Where-Object { $_ -match \"engine|migration|binary\" } | Select-Object -First 20)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Test-NetConnection *)",
+      "PowerShell(docker port quiz-db *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(npm run *)",
+      "Bash(npx prisma *)",
+      "Bash(docker compose up *)",
+      "Bash(npx tsx --tsconfig tsconfig.json -e ' *)",
+      "Bash(npx tsx *)"
+    ]
+  }
+}
