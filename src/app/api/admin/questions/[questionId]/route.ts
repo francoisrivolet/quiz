@@ -20,9 +20,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ question
       duration,
       points,
       answers: {
-        create: (answers ?? []).map((a: { text: string; isCorrect: boolean }) => ({
+        create: (answers ?? []).map((a: { text: string; isCorrect: boolean; lenient?: boolean }) => ({
           text: a.text,
           isCorrect: a.isCorrect ?? false,
+          lenient: a.lenient ?? false,
         })),
       },
     },

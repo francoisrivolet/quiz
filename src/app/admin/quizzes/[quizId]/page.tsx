@@ -6,7 +6,7 @@ import Link from "next/link";
 
 type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT";
 
-interface Answer { id?: string; text: string; isCorrect: boolean; }
+interface Answer { id?: string; text: string; isCorrect: boolean; lenient?: boolean; }
 interface Question {
   id: string; text: string; imageUrl?: string; type: QuestionType;
   duration: number; points: number; order: number; answers: Answer[];
@@ -22,7 +22,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 const EMPTY_FORM = {
   text: "", imageUrl: "", type: "SINGLE_CHOICE" as QuestionType,
   duration: 30, points: 100,
-  answers: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] as Answer[],
+  answers: [{ text: "", isCorrect: false, lenient: false }, { text: "", isCorrect: false, lenient: false }] as Answer[],
 };
 
 export default function QuizEditorPage({ params }: { params: Promise<{ quizId: string }> }) {
@@ -59,7 +59,7 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
     setForm({ text: q.text, imageUrl: q.imageUrl ?? "", type: q.type, duration: q.duration, points: q.points, answers: q.answers });
   }
 
-  function updateAnswer(i: number, field: "text" | "isCorrect", value: string | boolean) {
+  function updateAnswer(i: number, field: "text" | "isCorrect" | "lenient", value: string | boolean) {
     setForm((f) => {
       const answers = [...f.answers];
       answers[i] = { ...answers[i], [field]: value };
@@ -206,7 +206,7 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
   form: typeof EMPTY_FORM;
   setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>>;
 
-  updateAnswer: (i: number, f: "text" | "isCorrect", v: string | boolean) => void;
+  updateAnswer: (i: number, f: "text" | "isCorrect" | "lenient", v: string | boolean) => void;
   addAnswer: () => void;
   removeAnswer: (i: number) => void;
   onSave: () => void;
@@ -255,9 +255,9 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
                 type: newType,
                 answers:
                   newType === "FREE_TEXT"
-                    ? [{ text: "", isCorrect: true }]
+                    ? [{ text: "", isCorrect: true, lenient: false }]
                     : f.type === "FREE_TEXT"
-                    ? [{ text: "", isCorrect: false }, { text: "", isCorrect: false }]
+                    ? [{ text: "", isCorrect: false, lenient: false }, { text: "", isCorrect: false, lenient: false }]
                     : f.answers,
               }));
             }}
@@ -292,23 +292,36 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
         </label>
         <div className="space-y-2">
           {form.answers.map((a, i) => (
-            <div key={i} className="flex items-center gap-2">
-              {form.type !== "FREE_TEXT" && (
+            <div key={i} className="space-y-1">
+              <div className="flex items-center gap-2">
+                {form.type !== "FREE_TEXT" && (
+                  <input
+                    type={form.type === "SINGLE_CHOICE" ? "radio" : "checkbox"}
+                    checked={a.isCorrect}
+                    onChange={(e) => updateAnswer(i, "isCorrect", e.target.checked)}
+                    className="flex-shrink-0"
+                  />
+                )}
                 <input
-                  type={form.type === "SINGLE_CHOICE" ? "radio" : "checkbox"}
-                  checked={a.isCorrect}
-                  onChange={(e) => updateAnswer(i, "isCorrect", e.target.checked)}
-                  className="flex-shrink-0"
+                  value={a.text}
+                  onChange={(e) => updateAnswer(i, "text", e.target.value)}
+                  placeholder={`Réponse ${i + 1}`}
+                  className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              )}
-              <input
-                value={a.text}
-                onChange={(e) => updateAnswer(i, "text", e.target.value)}
-                placeholder={`Réponse ${i + 1}`}
-                className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {form.answers.length > (form.type === "FREE_TEXT" ? 1 : 2) && (
-                <button onClick={() => removeAnswer(i)} className="text-red-400 hover:text-red-600 px-1">✕</button>
+                {form.answers.length > (form.type === "FREE_TEXT" ? 1 : 2) && (
+                  <button onClick={() => removeAnswer(i)} className="text-red-400 hover:text-red-600 px-1">✕</button>
+                )}
+              </div>
+              {form.type === "FREE_TEXT" && (
+                <label className="flex items-center gap-2 text-xs text-gray-500 ml-0 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={a.lenient ?? false}
+                    onChange={(e) => updateAnswer(i, "lenient", e.target.checked)}
+                    className="flex-shrink-0"
+                  />
+                  Orthographe laxiste (1 erreur tolérée)
+                </label>
               )}
             </div>
           ))}

@@ -23,9 +23,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ quizId:
       duration: duration ?? 30,
       points: points ?? 100,
       answers: {
-        create: (answers ?? []).map((a: { text: string; isCorrect: boolean }) => ({
+        create: (answers ?? []).map((a: { text: string; isCorrect: boolean; lenient?: boolean }) => ({
           text: a.text,
           isCorrect: a.isCorrect ?? false,
+          lenient: a.lenient ?? false,
         })),
       },
     },

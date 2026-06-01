@@ -103,6 +103,7 @@ model QuestionAnswer {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   text       String
   isCorrect  Boolean  @default(false)
+  lenient    Boolean  @default(false)
 }
 
 model GameSession {
