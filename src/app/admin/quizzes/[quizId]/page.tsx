@@ -8,7 +8,7 @@ type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT";
 
 interface Answer { id?: string; text: string; isCorrect: boolean; }
 interface Question {
-  id: string; text: string; type: QuestionType;
+  id: string; text: string; imageUrl?: string; type: QuestionType;
   duration: number; points: number; order: number; answers: Answer[];
 }
 interface Quiz { id: string; title: string; description?: string; questions: Question[]; }
@@ -20,7 +20,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 const EMPTY_FORM = {
-  text: "", type: "SINGLE_CHOICE" as QuestionType,
+  text: "", imageUrl: "", type: "SINGLE_CHOICE" as QuestionType,
   duration: 30, points: 100,
   answers: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] as Answer[],
 };
@@ -56,7 +56,7 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
   function startEdit(q: Question) {
     setEditingId(q.id);
     setShowAdd(false);
-    setForm({ text: q.text, type: q.type, duration: q.duration, points: q.points, answers: q.answers });
+    setForm({ text: q.text, imageUrl: q.imageUrl ?? "", type: q.type, duration: q.duration, points: q.points, answers: q.answers });
   }
 
   function updateAnswer(i: number, field: "text" | "isCorrect", value: string | boolean) {
@@ -222,6 +222,26 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
         rows={2}
         className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
+
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">URL de l&apos;image (optionnel)</label>
+        <input
+          type="url"
+          value={form.imageUrl}
+          onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+          placeholder="https://exemple.com/image.jpg"
+          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {form.imageUrl && (
+          <img
+            src={form.imageUrl}
+            alt="Aperçu"
+            className="mt-2 rounded-lg max-h-40 object-contain border"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
+          />
+        )}
+      </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div>

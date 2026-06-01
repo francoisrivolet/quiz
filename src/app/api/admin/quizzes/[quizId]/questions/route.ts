@@ -7,7 +7,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ quizId:
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { quizId } = await params;
-  const { text, type, duration, points, answers } = await req.json();
+  const { text, imageUrl, type, duration, points, answers } = await req.json();
 
   if (!text?.trim()) return NextResponse.json({ error: "Texte requis" }, { status: 400 });
 
@@ -17,6 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ quizId:
     data: {
       quizId,
       text: text.trim(),
+      imageUrl: imageUrl?.trim() || null,
       type: type ?? "SINGLE_CHOICE",
       order: count,
       duration: duration ?? 30,

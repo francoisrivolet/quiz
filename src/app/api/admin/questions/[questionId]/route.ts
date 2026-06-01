@@ -7,7 +7,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ question
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { questionId } = await params;
-  const { text, type, duration, points, answers } = await req.json();
+  const { text, imageUrl, type, duration, points, answers } = await req.json();
 
   await prisma.questionAnswer.deleteMany({ where: { questionId } });
 
@@ -15,6 +15,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ question
     where: { id: questionId },
     data: {
       text,
+      imageUrl: imageUrl?.trim() || null,
       type,
       duration,
       points,

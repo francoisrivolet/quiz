@@ -71,6 +71,7 @@ async function endQuestion(io: SocketServer, sessionId: string) {
     question: {
       id: question.id,
       text: question.text,
+      imageUrl: question.imageUrl ?? null,
       type: question.type,
       answers: question.answers,
     },
@@ -276,6 +277,7 @@ export function setupSocketHandlers(io: SocketServer) {
           question: {
             id: question.id,
             text: question.text,
+            imageUrl: question.imageUrl ?? null,
             type: question.type,
             duration: question.duration,
             points: question.points,

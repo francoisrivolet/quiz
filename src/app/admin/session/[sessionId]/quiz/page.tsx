@@ -7,11 +7,11 @@ import { getSocket } from "@/lib/socket";
 type Phase = "idle" | "question" | "results";
 
 interface Question {
-  id: string; text: string; type: string; duration: number; points: number;
+  id: string; text: string; imageUrl?: string | null; type: string; duration: number; points: number;
   index: number; total: number; answers: { id: string; text: string }[];
 }
 interface QuestionResult {
-  question: { id: string; text: string; type: string; answers: { id: string; text: string; isCorrect: boolean }[] };
+  question: { id: string; text: string; imageUrl?: string | null; type: string; answers: { id: string; text: string; isCorrect: boolean }[] };
   playerAnswers: { playerId: string; nickname: string; answer: string; isCorrect: boolean; pointsEarned: number }[];
   leaderboard: { id: string; nickname: string; score: number; rank: number }[];
   isLastQuestion: boolean;
@@ -124,6 +124,14 @@ export default function AdminQuizPage({ params }: { params: Promise<{ sessionId:
               />
             </div>
 
+            {question.imageUrl && (
+              <img
+                src={question.imageUrl}
+                alt=""
+                className="w-full max-h-64 object-contain rounded-2xl mb-4"
+              />
+            )}
+
             <div className="bg-gray-800 rounded-2xl p-6 mb-6">
               <p className="text-xl font-semibold text-center">{question.text}</p>
             </div>
@@ -145,6 +153,14 @@ export default function AdminQuizPage({ params }: { params: Promise<{ sessionId:
         {/* RESULTS */}
         {phase === "results" && result && (
           <div>
+            {result.question.imageUrl && (
+              <img
+                src={result.question.imageUrl}
+                alt=""
+                className="w-full max-h-64 object-contain rounded-2xl mb-4"
+              />
+            )}
+
             <div className="bg-gray-800 rounded-2xl p-6 mb-6">
               <p className="text-lg font-semibold mb-4">{result.question.text}</p>
               <div className="space-y-2">

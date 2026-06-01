@@ -8,12 +8,12 @@ type Phase = "waiting" | "question" | "answered" | "results";
 type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT";
 
 interface Question {
-  id: string; text: string; type: QuestionType; duration: number;
+  id: string; text: string; imageUrl?: string | null; type: QuestionType; duration: number;
   points: number; index: number; total: number;
   answers: { id: string; text: string }[];
 }
 interface QuestionResult {
-  question: { id: string; text: string; type: QuestionType; answers: { id: string; text: string; isCorrect: boolean }[] };
+  question: { id: string; text: string; imageUrl?: string | null; type: QuestionType; answers: { id: string; text: string; isCorrect: boolean }[] };
   playerAnswers: { playerId: string; answer: string; isCorrect: boolean; pointsEarned: number }[];
   leaderboard: { id: string; nickname: string; score: number; rank: number }[];
   isLastQuestion: boolean;
@@ -186,6 +186,17 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
             </div>
           </div>
 
+          {/* Image de la question */}
+          {question.imageUrl && (
+            <div className="flex-none px-4 pt-2">
+              <img
+                src={question.imageUrl}
+                alt=""
+                className="w-full max-h-48 object-contain rounded-2xl"
+              />
+            </div>
+          )}
+
           {/* Texte de la question */}
           <div className="flex-none px-4 py-4">
             <div className="bg-gray-800 rounded-2xl px-5 py-6">
@@ -269,6 +280,15 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
 
           {/* Détails + classement — scrollable */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            {/* Image de la question */}
+            {result.question.imageUrl && (
+              <img
+                src={result.question.imageUrl}
+                alt=""
+                className="w-full max-h-40 object-contain rounded-2xl"
+              />
+            )}
+
             {/* Ma réponse */}
             <div className="bg-gray-800 rounded-2xl p-4">
               <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Ta réponse</p>
