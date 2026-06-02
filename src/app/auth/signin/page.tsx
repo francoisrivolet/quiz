@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-
 export default function SignInPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,19 +12,24 @@ export default function SignInPage() {
     setLoading(true);
 
     const data = new FormData(e.currentTarget);
-    const result = await signIn("credentials", {
-      email: data.get("email"),
-      password: data.get("password"),
-      redirect: false,
-    });
 
-    setLoading(false);
+    try {
+      const result = await signIn("credentials", {
+        email: data.get("email"),
+        password: data.get("password"),
+        redirect: false,
+      });
 
-    if (result?.error) {
-      setError("Email ou mot de passe incorrect");
-    } else {
-      router.push("/admin");
-      router.refresh();
+      setLoading(false);
+
+      if (!result || result.error) {
+        setError("Email ou mot de passe incorrect");
+      } else {
+        window.location.href = "/admin";
+      }
+    } catch {
+      setLoading(false);
+      setError("Erreur de connexion, réessaie");
     }
   }
 
