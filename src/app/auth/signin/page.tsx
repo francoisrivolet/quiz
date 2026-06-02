@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/admin";
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +28,7 @@ export default function SignInPage() {
     if (result?.error) {
       setError("Email ou mot de passe incorrect");
     } else {
-      router.push("/");
+      router.push(callbackUrl);
       router.refresh();
     }
   }
