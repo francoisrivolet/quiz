@@ -8,8 +8,8 @@ type Phase = "waiting" | "question" | "answered" | "results";
 type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT";
 
 interface Question {
-  id: string; text: string; imageUrl?: string | null; type: QuestionType; duration: number;
-  points: number; index: number; total: number;
+  id: string; text: string; imageUrl?: string | null; audioPreviewUrl?: string | null;
+  type: QuestionType; duration: number; points: number; index: number; total: number;
   answers: { id: string; text: string }[];
 }
 interface QuestionResult {
@@ -44,6 +44,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
   const [myChosenAnswerTexts, setMyChosenAnswerTexts] = useState<string[]>([]);
   const playerIdRef = useRef("");
   const nicknameRef = useRef("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("quiz_player");
@@ -58,6 +59,13 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     const socket = getSocket();
 
     socket.on("question:started", ({ question: q, startTime: st }: { question: Question; startTime: number }) => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      if (q.audioPreviewUrl) {
+        const audio = new Audio(q.audioPreviewUrl);
+        audio.play().catch(() => {});
+        audioRef.current = audio;
+      }
       setQuestion(q);
       setStartTime(st);
       setTimeLeft(q.duration);
@@ -71,6 +79,8 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     socket.on("answer:received", () => setPhase("answered"));
 
     socket.on("question:ended", (qResult: QuestionResult) => {
+      audioRef.current?.pause();
+      audioRef.current = null;
       setResult(qResult);
       const me = qResult.playerAnswers.find((pa) => pa.playerId === playerIdRef.current);
       const rank = qResult.leaderboard.find((p) => p.nickname === nicknameRef.current)?.rank ?? null;
@@ -110,6 +120,8 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     socket.io.on("reconnect", onReconnect);
 
     return () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
       socket.off("question:started");
       socket.off("answer:received");
       socket.off("question:ended");

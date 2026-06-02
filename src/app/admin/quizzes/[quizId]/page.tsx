@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -10,8 +10,10 @@ interface Answer { id?: string; text: string; isCorrect: boolean; lenient?: bool
 interface Question {
   id: string; text: string; imageUrl?: string; type: QuestionType;
   duration: number; points: number; order: number; answers: Answer[];
+  deezerTrackId?: string; audioPreviewUrl?: string;
 }
 interface Quiz { id: string; title: string; description?: string; questions: Question[]; }
+interface DeezerTrack { id: string; title: string; artist: string; cover: string; preview: string; }
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   SINGLE_CHOICE: "Choix unique",
@@ -20,8 +22,8 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 const EMPTY_FORM = {
-  text: "", imageUrl: "", type: "SINGLE_CHOICE" as QuestionType,
-  duration: 30, points: 100,
+  text: "", imageUrl: "", deezerTrackId: "", audioPreviewUrl: "",
+  type: "SINGLE_CHOICE" as QuestionType, duration: 30, points: 100,
   answers: [{ text: "", isCorrect: false, lenient: false }, { text: "", isCorrect: false, lenient: false }] as Answer[],
 };
 
@@ -56,7 +58,11 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
   function startEdit(q: Question) {
     setEditingId(q.id);
     setShowAdd(false);
-    setForm({ text: q.text, imageUrl: q.imageUrl ?? "", type: q.type, duration: q.duration, points: q.points, answers: q.answers });
+    setForm({
+      text: q.text, imageUrl: q.imageUrl ?? "", type: q.type,
+      duration: q.duration, points: q.points, answers: q.answers,
+      deezerTrackId: q.deezerTrackId ?? "", audioPreviewUrl: q.audioPreviewUrl ?? "",
+    });
   }
 
   function updateAnswer(i: number, field: "text" | "isCorrect" | "lenient", value: string | boolean) {
@@ -163,8 +169,9 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
               <span className="text-sm font-bold text-gray-400 mt-0.5 w-6 flex-shrink-0">{i + 1}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900">{q.text}</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">
                   {TYPE_LABELS[q.type]} · {q.duration}s · {q.points} pts
+                  {q.audioPreviewUrl && <span className="inline-flex items-center gap-1 text-purple-600 font-medium">🎵 Blind test</span>}
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
@@ -202,10 +209,115 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
   );
 }
 
+function DeezerPicker({ audioPreviewUrl, onSelect, onClear }: {
+  audioPreviewUrl: string;
+  onSelect: (track: DeezerTrack) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<DeezerTrack[]>([]);
+  const [loading, setLoading] = useState(false);
+  const previewRef = useRef<HTMLAudioElement | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const r = await fetch(`/api/deezer/search?q=${encodeURIComponent(query)}`);
+        const data = await r.json();
+        setResults(Array.isArray(data) ? data : []);
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    return () => { previewRef.current?.pause(); };
+  }, []);
+
+  function togglePreview(track: DeezerTrack) {
+    if (playingId === track.id) {
+      previewRef.current?.pause();
+      setPlayingId(null);
+      return;
+    }
+    previewRef.current?.pause();
+    const audio = new Audio(track.preview);
+    audio.play().catch(() => {});
+    audio.onended = () => setPlayingId(null);
+    previewRef.current = audio;
+    setPlayingId(track.id);
+  }
+
+  function choose(track: DeezerTrack) {
+    previewRef.current?.pause();
+    setPlayingId(null);
+    setResults([]);
+    setQuery("");
+    onSelect(track);
+  }
+
+  if (audioPreviewUrl) {
+    return (
+      <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+        <span className="text-purple-500 text-lg flex-shrink-0">🎵</span>
+        <audio controls src={audioPreviewUrl} className="flex-1 h-8" style={{ minWidth: 0 }} />
+        <button
+          onClick={onClear}
+          className="text-sm text-red-500 hover:text-red-700 flex-shrink-0 px-1"
+          title="Supprimer l'extrait"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Rechercher un morceau sur Deezer…"
+        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+      />
+      {loading && <p className="text-xs text-gray-400 mt-1">Recherche…</p>}
+      {results.length > 0 && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          {results.map((track) => (
+            <div key={track.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 border-t first:border-t-0">
+              <img src={track.cover} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{track.title}</p>
+                <p className="text-xs text-gray-400 truncate">{track.artist}</p>
+              </div>
+              <button
+                onClick={() => togglePreview(track)}
+                className={`text-xs px-2 py-1 rounded flex-shrink-0 ${playingId === track.id ? "text-purple-600 bg-purple-50" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                {playingId === track.id ? "⏹" : "▶"}
+              </button>
+              <button
+                onClick={() => choose(track)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800 flex-shrink-0 px-2 py-1 rounded hover:bg-blue-50"
+              >
+                Choisir
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, onSave, onCancel, saving }: {
   form: typeof EMPTY_FORM;
   setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>>;
-
   updateAnswer: (i: number, f: "text" | "isCorrect" | "lenient", v: string | boolean) => void;
   addAnswer: () => void;
   removeAnswer: (i: number) => void;
@@ -241,6 +353,15 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
             onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
           />
         )}
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">Extrait musical — Blind test (optionnel)</label>
+        <DeezerPicker
+          audioPreviewUrl={form.audioPreviewUrl}
+          onSelect={(track) => setForm((f) => ({ ...f, deezerTrackId: track.id, audioPreviewUrl: track.preview }))}
+          onClear={() => setForm((f) => ({ ...f, deezerTrackId: "", audioPreviewUrl: "" }))}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-3">

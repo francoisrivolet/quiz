@@ -10,6 +10,8 @@ export async function POST(req: Request) {
   const { quizId } = await req.json();
   if (!quizId) return NextResponse.json({ error: "quizId requis" }, { status: 400 });
 
+  await prisma.gameSession.deleteMany({ where: { quizId } });
+
   // Generate unique code
   let code = generateCode();
   while (await prisma.gameSession.findUnique({ where: { code } })) {

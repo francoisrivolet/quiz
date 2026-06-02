@@ -304,6 +304,7 @@ export function setupSocketHandlers(io: SocketServer) {
             id: question.id,
             text: question.text,
             imageUrl: question.imageUrl ?? null,
+            audioPreviewUrl: question.audioPreviewUrl ?? null,
             type: question.type,
             duration: question.duration,
             points: question.points,

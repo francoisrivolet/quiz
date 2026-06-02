@@ -88,8 +88,10 @@ model Question {
   quizId        String
   quiz          Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
   text          String
-  imageUrl      String?
-  type          QuestionType     @default(SINGLE_CHOICE)
+  imageUrl        String?
+  deezerTrackId   String?
+  audioPreviewUrl String?
+  type            QuestionType     @default(SINGLE_CHOICE)
   order         Int
   duration      Int              @default(30)
   points        Int              @default(100)
