@@ -1,21 +1,7 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 
-export async function proxy(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
-
-  if (!token) {
-    const url = new URL("/auth/signin", request.url);
-    url.searchParams.set("callbackUrl", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next();
-}
+export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: ["/admin/:path*"],
