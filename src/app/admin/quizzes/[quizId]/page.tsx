@@ -209,8 +209,9 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
   );
 }
 
-function DeezerPicker({ audioPreviewUrl, onSelect, onClear }: {
+function DeezerPicker({ audioPreviewUrl, deezerTrackId, onSelect, onClear }: {
   audioPreviewUrl: string;
+  deezerTrackId: string;
   onSelect: (track: DeezerTrack) => void;
   onClear: () => void;
 }) {
@@ -262,7 +263,10 @@ function DeezerPicker({ audioPreviewUrl, onSelect, onClear }: {
   }
 
   if (audioPreviewUrl) {
-    const proxied = `/api/audio/proxy?url=${encodeURIComponent(audioPreviewUrl)}`;
+    // Prefer trackId so the proxy fetches a fresh URL (stored URLs expire in ~24h)
+    const proxied = deezerTrackId
+      ? `/api/audio/proxy?trackId=${encodeURIComponent(deezerTrackId)}`
+      : `/api/audio/proxy?url=${encodeURIComponent(audioPreviewUrl)}`;
     return (
       <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
         <span className="text-purple-500 text-lg flex-shrink-0">🎵</span>
@@ -360,6 +364,7 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
         <label className="text-xs text-gray-500 block mb-1">Extrait musical — Blind test (optionnel)</label>
         <DeezerPicker
           audioPreviewUrl={form.audioPreviewUrl}
+          deezerTrackId={form.deezerTrackId}
           onSelect={(track) => setForm((f) => ({ ...f, deezerTrackId: track.id, audioPreviewUrl: track.preview }))}
           onClear={() => setForm((f) => ({ ...f, deezerTrackId: "", audioPreviewUrl: "" }))}
         />

@@ -1,22 +1,46 @@
 import { NextResponse } from "next/server";
 
-// Only allow Deezer CDN hostnames to prevent SSRF abuse
-const ALLOWED_HOST = /^cdns-preview[\w-]*\.dzcdn\.net$/;
+// Allow any subdomain of dzcdn.net (Deezer's CDN)
+function isDeezerCdn(hostname: string) {
+  return hostname === "dzcdn.net" || hostname.endsWith(".dzcdn.net");
+}
+
+async function fetchFreshUrl(trackId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.deezer.com/track/${encodeURIComponent(trackId)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.preview === "string" ? data.preview : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const url = searchParams.get("url");
+  const trackId = searchParams.get("trackId");
+  let rawUrl = searchParams.get("url");
 
-  if (!url) return NextResponse.json({ error: "Missing url" }, { status: 400 });
+  // If trackId given, always fetch a fresh URL from Deezer API
+  if (trackId) {
+    rawUrl = await fetchFreshUrl(trackId);
+    if (!rawUrl) {
+      return NextResponse.json({ error: "Track not found on Deezer" }, { status: 404 });
+    }
+  }
+
+  if (!rawUrl) {
+    return NextResponse.json({ error: "Missing url or trackId" }, { status: 400 });
+  }
 
   let parsed: URL;
   try {
-    parsed = new URL(url);
+    parsed = new URL(rawUrl);
   } catch {
     return NextResponse.json({ error: "Invalid url" }, { status: 400 });
   }
 
-  if (parsed.protocol !== "https:" || !ALLOWED_HOST.test(parsed.hostname)) {
+  if (parsed.protocol !== "https:" || !isDeezerCdn(parsed.hostname)) {
     return NextResponse.json({ error: "Forbidden domain" }, { status: 403 });
   }
 
@@ -26,7 +50,7 @@ export async function GET(req: Request) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(url, { headers: upstreamHeaders });
+    upstream = await fetch(rawUrl, { headers: upstreamHeaders });
   } catch {
     return NextResponse.json({ error: "Fetch failed" }, { status: 502 });
   }

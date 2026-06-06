@@ -29,8 +29,21 @@ function levenshtein(a: string, b: string): number {
 
 interface QuestionPayload {
   id: string; text: string; imageUrl: string | null; audioPreviewUrl: string | null;
+  deezerTrackId: string | null;
   type: string; duration: number; points: number; index: number; total: number;
   answers: { id: string; text: string }[];
+}
+
+async function getFreshAudioUrl(deezerTrackId: string | null, fallback: string | null): Promise<string | null> {
+  if (!deezerTrackId) return fallback;
+  try {
+    const res = await fetch(`https://api.deezer.com/track/${encodeURIComponent(deezerTrackId)}`);
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    return typeof data.preview === "string" ? data.preview : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 interface SessionState {
@@ -322,11 +335,18 @@ export function setupSocketHandlers(io: SocketServer) {
           data: { currentQuestionIndex: newIndex },
         });
 
+        // Fetch a fresh Deezer preview URL (stored URLs expire after ~24h)
+        const freshAudioUrl = await getFreshAudioUrl(
+          question.deezerTrackId ?? null,
+          question.audioPreviewUrl ?? null,
+        );
+
         const questionPayload: QuestionPayload = {
           id: question.id,
           text: question.text,
           imageUrl: question.imageUrl ?? null,
-          audioPreviewUrl: question.audioPreviewUrl ?? null,
+          audioPreviewUrl: freshAudioUrl,
+          deezerTrackId: question.deezerTrackId ?? null,
           type: question.type,
           duration: question.duration,
           points: question.points,
