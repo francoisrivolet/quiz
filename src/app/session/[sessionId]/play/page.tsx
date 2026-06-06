@@ -361,16 +361,37 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
             {/* Classement */}
             <div className="bg-gray-800 rounded-2xl overflow-hidden">
               <p className="text-xs text-gray-400 uppercase tracking-wide px-4 pt-4 mb-2">Classement</p>
-              {result.leaderboard.slice(0, 5).map((p) => (
-                <div
-                  key={p.id}
-                  className={`flex items-center gap-3 px-4 py-3 border-t border-gray-700/50 ${p.nickname === myNickname ? "bg-blue-500/10" : ""}`}
-                >
-                  <span className="text-gray-500 w-5 text-sm font-bold">{p.rank}</span>
-                  <span className={`flex-1 text-sm font-medium ${p.nickname === myNickname ? "text-blue-300" : ""}`}>{p.nickname}</span>
-                  <span className="text-yellow-400 font-bold text-sm">{p.score} pts</span>
-                </div>
-              ))}
+              {result.leaderboard.slice(0, 5).map((p) => {
+                const pa = result.playerAnswers.find((a) => a.playerId === p.id);
+                const answerText = pa?.answer
+                  ? result.question.type === "FREE_TEXT"
+                    ? pa.answer
+                    : result.question.type === "SINGLE_CHOICE"
+                    ? (result.question.answers.find((a) => a.id === pa.answer)?.text ?? pa.answer)
+                    : (() => { try { const ids: string[] = JSON.parse(pa.answer); return ids.map((id) => result.question.answers.find((a) => a.id === id)?.text ?? id).join(", "); } catch { return pa.answer; } })()
+                  : null;
+                return (
+                  <div
+                    key={p.id}
+                    className={`px-4 py-3 border-t border-gray-700/50 ${p.nickname === myNickname ? "bg-blue-500/10" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-500 w-5 text-sm font-bold flex-shrink-0">{p.rank}</span>
+                      <span className={`flex-1 text-sm font-medium ${p.nickname === myNickname ? "text-blue-300" : ""}`}>{p.nickname}</span>
+                      <span className="text-yellow-400 font-bold text-sm">{p.score} pts</span>
+                    </div>
+                    <div className="ml-8">
+                      {answerText ? (
+                        <span className={`text-xs ${pa?.isCorrect ? "text-green-400" : "text-red-400"}`}>
+                          {pa?.isCorrect ? "✓" : "✗"} {answerText}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-600 italic">pas de réponse</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <p className="text-center text-gray-600 text-xs pb-2 animate-pulse">
