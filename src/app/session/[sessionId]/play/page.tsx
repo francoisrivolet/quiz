@@ -147,12 +147,15 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     return () => clearInterval(iv);
   }, [phase, startTime, question?.duration]);
 
+  function submitSingleChoice(id: string) {
+    if (!question || !myId) return;
+    setSelected([id]);
+    getSocket().emit("player:submit-answer", { sessionPlayerId: myId, questionId: question.id, answer: id });
+    setPhase("answered");
+  }
+
   function toggleChoice(id: string) {
-    if (question?.type === "SINGLE_CHOICE") {
-      setSelected([id]);
-    } else {
-      setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
-    }
+    setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
   }
 
   function submitAnswer() {
@@ -266,10 +269,11 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
                   {question.answers.map((a, i) => {
                     const c = ANSWER_COLORS[i % 4];
                     const isSelected = selected.includes(a.id);
+                    const isSingle = question.type === "SINGLE_CHOICE";
                     return (
                       <button
                         key={a.id}
-                        onClick={() => toggleChoice(a.id)}
+                        onClick={() => isSingle ? submitSingleChoice(a.id) : toggleChoice(a.id)}
                         className={`${c.base} rounded-2xl py-6 px-3 text-white font-bold text-sm leading-tight transition-all active:scale-95 ${
                           isSelected ? `ring-4 ${c.active} scale-95` : "opacity-85"
                         }`}
@@ -279,7 +283,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
                     );
                   })}
                 </div>
-                {selected.length > 0 && (
+                {question.type === "MULTIPLE_CHOICE" && selected.length > 0 && (
                   <button
                     onClick={submitAnswer}
                     className="w-full bg-white text-gray-900 font-bold py-5 rounded-2xl text-lg active:bg-gray-100"
