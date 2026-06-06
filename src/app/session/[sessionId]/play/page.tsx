@@ -42,6 +42,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
   const [myResult, setMyResult] = useState<{ isCorrect: boolean; pointsEarned: number } | null>(null);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [myChosenAnswerTexts, setMyChosenAnswerTexts] = useState<string[]>([]);
+  const [blockedAudioUrl, setBlockedAudioUrl] = useState<string | null>(null);
   const playerIdRef = useRef("");
   const nicknameRef = useRef("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -61,10 +62,14 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     socket.on("question:started", ({ question: q, startTime: st }: { question: Question; startTime: number }) => {
       audioRef.current?.pause();
       audioRef.current = null;
+      setBlockedAudioUrl(null);
       if (q.audioPreviewUrl) {
         const audio = new Audio(q.audioPreviewUrl);
-        audio.play().catch(() => {});
-        audioRef.current = audio;
+        audio.play().then(() => {
+          audioRef.current = audio;
+        }).catch(() => {
+          setBlockedAudioUrl(q.audioPreviewUrl ?? null);
+        });
       }
       setQuestion(q);
       setStartTime(st);
@@ -81,6 +86,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     socket.on("question:ended", (qResult: QuestionResult) => {
       audioRef.current?.pause();
       audioRef.current = null;
+      setBlockedAudioUrl(null);
       setResult(qResult);
       const me = qResult.playerAnswers.find((pa) => pa.playerId === playerIdRef.current);
       const rank = qResult.leaderboard.find((p) => p.nickname === nicknameRef.current)?.rank ?? null;
@@ -197,6 +203,23 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
               />
             </div>
           </div>
+
+          {/* Bouton audio bloqué (autoplay mobile) */}
+          {blockedAudioUrl && (
+            <div className="flex-none px-4 pt-2">
+              <button
+                onClick={() => {
+                  const audio = new Audio(blockedAudioUrl);
+                  audio.play().catch(() => {});
+                  audioRef.current = audio;
+                  setBlockedAudioUrl(null);
+                }}
+                className="w-full bg-purple-600 active:bg-purple-700 text-white font-bold py-3 rounded-2xl text-base flex items-center justify-center gap-2"
+              >
+                <span>🎵</span> Lancer la musique
+              </button>
+            </div>
+          )}
 
           {/* Image de la question */}
           {question.imageUrl && (

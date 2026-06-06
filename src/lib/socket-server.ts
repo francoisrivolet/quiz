@@ -27,12 +27,20 @@ function levenshtein(a: string, b: string): number {
   return prev[b.length];
 }
 
+interface QuestionPayload {
+  id: string; text: string; imageUrl: string | null; audioPreviewUrl: string | null;
+  type: string; duration: number; points: number; index: number; total: number;
+  answers: { id: string; text: string }[];
+}
+
 interface SessionState {
   currentQuestionIndex: number;
   timer: ReturnType<typeof setTimeout> | null;
   answeredPlayerIds: Set<string>;
   totalPlayers: number;
   questionEnded: boolean;
+  currentQuestion: QuestionPayload | null;
+  questionStartTime: number;
 }
 
 const sessionStates = new Map<string, SessionState>();
@@ -188,6 +196,19 @@ export function setupSocketHandlers(io: SocketServer) {
           currentQuestionIndex: player.session.currentQuestionIndex,
         });
 
+        if (player.session.status === "ACTIVE") {
+          const state = sessionStates.get(sessionId);
+          if (state && state.currentQuestion && !state.questionEnded) {
+            socket.emit("question:started", {
+              question: state.currentQuestion,
+              startTime: state.questionStartTime,
+            });
+            if (state.answeredPlayerIds.has(playerId)) {
+              socket.emit("answer:received", {});
+            }
+          }
+        }
+
         if (player.session.status === "WAITING") {
           const players = await prisma.sessionPlayer.findMany({
             where: { sessionId },
@@ -254,6 +275,8 @@ export function setupSocketHandlers(io: SocketServer) {
           answeredPlayerIds: new Set(),
           totalPlayers: session.players.length,
           questionEnded: false,
+          currentQuestion: null,
+          questionStartTime: 0,
         });
 
         io.to(`session:${sessionId}`).emit("quiz:started");
@@ -299,20 +322,25 @@ export function setupSocketHandlers(io: SocketServer) {
           data: { currentQuestionIndex: newIndex },
         });
 
+        const questionPayload: QuestionPayload = {
+          id: question.id,
+          text: question.text,
+          imageUrl: question.imageUrl ?? null,
+          audioPreviewUrl: question.audioPreviewUrl ?? null,
+          type: question.type,
+          duration: question.duration,
+          points: question.points,
+          index: newIndex,
+          total: session.quiz.questions.length,
+          answers: question.answers.map((a) => ({ id: a.id, text: a.text })),
+        };
+        const startTime = Date.now();
+        state.currentQuestion = questionPayload;
+        state.questionStartTime = startTime;
+
         io.to(`session:${sessionId}`).emit("question:started", {
-          question: {
-            id: question.id,
-            text: question.text,
-            imageUrl: question.imageUrl ?? null,
-            audioPreviewUrl: question.audioPreviewUrl ?? null,
-            type: question.type,
-            duration: question.duration,
-            points: question.points,
-            index: newIndex,
-            total: session.quiz.questions.length,
-            answers: question.answers.map((a) => ({ id: a.id, text: a.text })),
-          },
-          startTime: Date.now(),
+          question: questionPayload,
+          startTime,
         });
 
         state.timer = setTimeout(() => {
