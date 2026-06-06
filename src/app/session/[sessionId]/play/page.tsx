@@ -365,7 +365,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
             {/* Classement */}
             <div className="bg-gray-800 rounded-2xl overflow-hidden">
               <p className="text-xs text-gray-400 uppercase tracking-wide px-4 pt-4 mb-2">Classement</p>
-              {result.leaderboard.slice(0, 5).map((p) => {
+              {result.leaderboard.slice(0, 10).map((p) => {
                 const pa = result.playerAnswers.find((a) => a.playerId === p.id);
                 const answerText = pa?.answer
                   ? result.question.type === "FREE_TEXT"

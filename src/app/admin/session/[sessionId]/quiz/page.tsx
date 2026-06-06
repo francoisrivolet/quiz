@@ -177,13 +177,34 @@ export default function AdminQuizPage({ params }: { params: Promise<{ sessionId:
 
             <div className="bg-gray-800 rounded-2xl p-4 mb-6">
               <p className="text-sm text-gray-400 mb-3">Classement</p>
-              {result.leaderboard.slice(0, 5).map((p) => (
-                <div key={p.id} className="flex items-center gap-3 py-2">
-                  <span className="text-gray-500 w-6 text-sm">{p.rank}</span>
-                  <span className="flex-1 font-medium">{p.nickname}</span>
-                  <span className="text-yellow-400 font-bold">{p.score} pts</span>
-                </div>
-              ))}
+              {result.leaderboard.map((p) => {
+                const pa = result.playerAnswers.find((a) => a.playerId === p.id);
+                const answerText = pa?.answer
+                  ? result.question.type === "FREE_TEXT"
+                    ? pa.answer
+                    : result.question.type === "SINGLE_CHOICE"
+                    ? (result.question.answers.find((a) => a.id === pa.answer)?.text ?? pa.answer)
+                    : (() => { try { const ids: string[] = JSON.parse(pa.answer); return ids.map((id) => result.question.answers.find((a) => a.id === id)?.text ?? id).join(", "); } catch { return pa.answer; } })()
+                  : null;
+                return (
+                  <div key={p.id} className="py-2 border-t border-gray-700/50 first:border-t-0">
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-500 w-6 text-sm flex-shrink-0">{p.rank}</span>
+                      <span className="flex-1 font-medium">{p.nickname}</span>
+                      <span className="text-yellow-400 font-bold">{p.score} pts</span>
+                    </div>
+                    <div className="ml-9">
+                      {answerText ? (
+                        <span className={`text-xs ${pa?.isCorrect ? "text-green-400" : "text-red-400"}`}>
+                          {pa?.isCorrect ? "✓" : "✗"} {answerText}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-600 italic">pas de réponse</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <button
