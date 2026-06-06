@@ -64,7 +64,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
       audioRef.current = null;
       setBlockedAudioUrl(null);
       if (q.audioPreviewUrl) {
-        const audio = new Audio(q.audioPreviewUrl);
+        const audio = new Audio(proxyAudio(q.audioPreviewUrl));
         audio.play().then(() => {
           audioRef.current = audio;
         }).catch(() => {
@@ -172,6 +172,10 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
     setPhase("answered");
   }
 
+  function proxyAudio(url: string) {
+    return `/api/audio/proxy?url=${encodeURIComponent(url)}`;
+  }
+
   const timerPct = question ? (timeLeft / question.duration) * 100 : 0;
   const timerColor = timeLeft <= 5 ? "bg-red-500" : "bg-blue-500";
 
@@ -189,8 +193,8 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
       {/* ── QUESTION ────────────────────────────────────────────── */}
       {phase === "question" && question && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Barre de progression + infos */}
-          <div className="flex-none px-4 pt-4 pb-2">
+          {/* Barre de progression + infos — toujours visible en haut */}
+          <div className="flex-none px-4 pt-4 pb-2 bg-gray-900">
             <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
               <span>{question.index + 1} / {question.total}</span>
               <span className={`text-2xl font-black ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}>{timeLeft}</span>
@@ -204,12 +208,13 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
             </div>
           </div>
 
-          {/* Bouton audio bloqué (autoplay mobile) */}
-          {blockedAudioUrl && (
-            <div className="flex-none px-4 pt-2">
+          {/* Contenu scrollable : audio, image, question, réponses */}
+          <div className="flex-1 overflow-y-auto px-4 pb-6 flex flex-col gap-3 pt-2">
+            {/* Bouton audio bloqué (autoplay mobile) */}
+            {blockedAudioUrl && (
               <button
                 onClick={() => {
-                  const audio = new Audio(blockedAudioUrl);
+                  const audio = new Audio(proxyAudio(blockedAudioUrl));
                   audio.play().catch(() => {});
                   audioRef.current = audio;
                   setBlockedAudioUrl(null);
@@ -218,29 +223,26 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
               >
                 <span>🎵</span> Lancer la musique
               </button>
-            </div>
-          )}
+            )}
 
-          {/* Image de la question */}
-          {question.imageUrl && (
-            <div className="flex-none px-4 pt-2">
+            {/* Image de la question */}
+            {question.imageUrl && (
               <img
                 src={question.imageUrl}
                 alt=""
                 className="w-full max-h-48 object-contain rounded-2xl"
               />
-            </div>
-          )}
+            )}
 
-          {/* Texte de la question */}
-          <div className="flex-none px-4 py-4">
+            {/* Texte de la question */}
             <div className="bg-gray-800 rounded-2xl px-5 py-6">
               <p className="text-lg font-semibold text-center leading-snug">{question.text}</p>
             </div>
-          </div>
 
-          {/* Zone de réponses — prend tout l'espace restant */}
-          <div className="flex-1 overflow-y-auto px-4 pb-6 flex flex-col justify-end gap-3">
+            {/* Spacer pour pousser les réponses vers le bas quand le contenu est court */}
+            <div className="flex-1" />
+
+            {/* Zone de réponses */}
             {question.type === "FREE_TEXT" ? (
               <>
                 <input

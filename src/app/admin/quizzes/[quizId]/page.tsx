@@ -262,10 +262,11 @@ function DeezerPicker({ audioPreviewUrl, onSelect, onClear }: {
   }
 
   if (audioPreviewUrl) {
+    const proxied = `/api/audio/proxy?url=${encodeURIComponent(audioPreviewUrl)}`;
     return (
       <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
         <span className="text-purple-500 text-lg flex-shrink-0">🎵</span>
-        <audio controls src={audioPreviewUrl} className="flex-1 h-8" style={{ minWidth: 0 }} />
+        <audio controls src={proxied} className="flex-1 h-8" style={{ minWidth: 0 }} />
         <button
           onClick={onClear}
           className="text-sm text-red-500 hover:text-red-700 flex-shrink-0 px-1"
