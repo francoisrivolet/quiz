@@ -67,19 +67,20 @@ model Quiz {
 }
 
 model Question {
-  id              String           @id @default(cuid())
-  quizId          String
-  text            String
-  type            QuestionType     @default(SINGLE_CHOICE)
-  order           Int
-  duration        Int              @default(30)
-  points          Int              @default(100)
-  imageUrl        String?
-  audioPreviewUrl String?
-  deezerTrackId   String?
-  playerAnswers   PlayerAnswer[]
-  quiz            Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  answers         QuestionAnswer[]
+  id                    String           @id @default(cuid())
+  quizId                String
+  text                  String
+  type                  QuestionType     @default(SINGLE_CHOICE)
+  order                 Int
+  duration              Int              @default(30)
+  points                Int              @default(100)
+  imageUrl              String?
+  audioPreviewUrl       String?
+  deezerTrackId         String?
+  allowMultipleAttempts Boolean          @default(false)
+  playerAnswers         PlayerAnswer[]
+  quiz                  Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers               QuestionAnswer[]
 }
 
 model QuestionAnswer {
@@ -120,6 +121,7 @@ model PlayerAnswer {
   answer          String
   isCorrect       Boolean       @default(false)
   pointsEarned    Int           @default(0)
+  wrongAttempts   Int           @default(0)
   createdAt       DateTime      @default(now())
   question        Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
   player          SessionPlayer @relation(fields: [sessionPlayerId], references: [id], onDelete: Cascade)

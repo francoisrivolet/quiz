@@ -31,6 +31,7 @@ interface QuestionPayload {
   id: string; text: string; imageUrl: string | null; audioPreviewUrl: string | null;
   deezerTrackId: string | null;
   type: string; duration: number; points: number; index: number; total: number;
+  allowMultipleAttempts: boolean;
   answers: { id: string; text: string }[];
 }
 
@@ -92,17 +93,19 @@ async function endQuestion(io: SocketServer, sessionId: string) {
     include: { player: true },
   });
 
-  // Award points for correct answers
+  // Award points for correct answers, applying a 10% penalty per wrong attempt
   for (const pa of playerAnswers) {
     if (pa.isCorrect) {
+      const earned = Math.max(0, Math.round(question.points * (1 - 0.1 * pa.wrongAttempts)));
       await prisma.sessionPlayer.update({
         where: { id: pa.sessionPlayerId },
-        data: { score: { increment: question.points } },
+        data: { score: { increment: earned } },
       });
       await prisma.playerAnswer.update({
         where: { id: pa.id },
-        data: { pointsEarned: question.points },
+        data: { pointsEarned: earned },
       });
+      pa.pointsEarned = earned;
     }
   }
 
@@ -127,7 +130,8 @@ async function endQuestion(io: SocketServer, sessionId: string) {
       nickname: pa.player.nickname,
       answer: pa.answer,
       isCorrect: pa.isCorrect,
-      pointsEarned: pa.isCorrect ? question.points : 0,
+      pointsEarned: pa.isCorrect ? pa.pointsEarned : 0,
+      wrongAttempts: pa.wrongAttempts,
     })),
     leaderboard: leaderboard.map((p, i) => ({
       id: p.id,
@@ -352,6 +356,7 @@ export function setupSocketHandlers(io: SocketServer) {
           points: question.points,
           index: newIndex,
           total: session.quiz.questions.length,
+          allowMultipleAttempts: question.allowMultipleAttempts,
           answers: question.answers.map((a) => ({ id: a.id, text: a.text })),
         };
         const startTime = Date.now();
@@ -444,9 +449,48 @@ export function setupSocketHandlers(io: SocketServer) {
             });
         }
 
-        await prisma.playerAnswer.create({
-          data: { sessionPlayerId, questionId, answer: answerStr, isCorrect },
-        });
+        const multiAttempt = question.type === "FREE_TEXT" && question.allowMultipleAttempts;
+
+        if (multiAttempt) {
+          const existing = await prisma.playerAnswer.findFirst({
+            where: { sessionPlayerId, questionId },
+          });
+
+          if (!isCorrect) {
+            // Wrong attempt: record it and let the player try again (no lock)
+            const wrongAttempts = (existing?.wrongAttempts ?? 0) + 1;
+            if (existing) {
+              await prisma.playerAnswer.update({
+                where: { id: existing.id },
+                data: { answer: answerStr, isCorrect: false, wrongAttempts },
+              });
+            } else {
+              await prisma.playerAnswer.create({
+                data: { sessionPlayerId, questionId, answer: answerStr, isCorrect: false, wrongAttempts },
+              });
+            }
+            const potentialPoints = Math.max(0, Math.round(question.points * (1 - 0.1 * wrongAttempts)));
+            socket.emit("answer:wrong", { wrongAttempts, potentialPoints });
+            return;
+          }
+
+          // Correct: keep the accumulated wrong attempts and lock the player
+          const wrongAttempts = existing?.wrongAttempts ?? 0;
+          if (existing) {
+            await prisma.playerAnswer.update({
+              where: { id: existing.id },
+              data: { answer: answerStr, isCorrect: true, wrongAttempts },
+            });
+          } else {
+            await prisma.playerAnswer.create({
+              data: { sessionPlayerId, questionId, answer: answerStr, isCorrect: true },
+            });
+          }
+        } else {
+          await prisma.playerAnswer.create({
+            data: { sessionPlayerId, questionId, answer: answerStr, isCorrect },
+          });
+        }
 
         state.answeredPlayerIds.add(sessionPlayerId);
 

@@ -7,7 +7,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ question
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { questionId } = await params;
-  const { text, imageUrl, deezerTrackId, audioPreviewUrl, type, duration, points, answers } = await req.json();
+  const { text, imageUrl, deezerTrackId, audioPreviewUrl, type, duration, points, answers, allowMultipleAttempts } = await req.json();
 
   await prisma.questionAnswer.deleteMany({ where: { questionId } });
 
@@ -21,6 +21,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ question
       type,
       duration,
       points,
+      allowMultipleAttempts: type === "FREE_TEXT" ? (allowMultipleAttempts ?? false) : false,
       answers: {
         create: (answers ?? []).map((a: { text: string; isCorrect: boolean; lenient?: boolean }) => ({
           text: a.text,

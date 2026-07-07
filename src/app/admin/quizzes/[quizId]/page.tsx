@@ -10,7 +10,7 @@ interface Answer { id?: string; text: string; isCorrect: boolean; lenient?: bool
 interface Question {
   id: string; text: string; imageUrl?: string; type: QuestionType;
   duration: number; points: number; order: number; answers: Answer[];
-  deezerTrackId?: string; audioPreviewUrl?: string;
+  deezerTrackId?: string; audioPreviewUrl?: string; allowMultipleAttempts?: boolean;
 }
 interface Quiz { id: string; title: string; description?: string; questions: Question[]; }
 interface DeezerTrack { id: string; title: string; artist: string; cover: string; preview: string; }
@@ -24,6 +24,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 const EMPTY_FORM = {
   text: "", imageUrl: "", deezerTrackId: "", audioPreviewUrl: "",
   type: "SINGLE_CHOICE" as QuestionType, duration: 30, points: 100,
+  allowMultipleAttempts: false,
   answers: [{ text: "", isCorrect: false, lenient: false }, { text: "", isCorrect: false, lenient: false }] as Answer[],
 };
 
@@ -62,6 +63,7 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
       text: q.text, imageUrl: q.imageUrl ?? "", type: q.type,
       duration: q.duration, points: q.points, answers: q.answers,
       deezerTrackId: q.deezerTrackId ?? "", audioPreviewUrl: q.audioPreviewUrl ?? "",
+      allowMultipleAttempts: q.allowMultipleAttempts ?? false,
     });
   }
 
@@ -172,6 +174,7 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
                 <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">
                   {TYPE_LABELS[q.type]} · {q.duration}s · {q.points} pts
                   {q.audioPreviewUrl && <span className="inline-flex items-center gap-1 text-purple-600 font-medium">🎵 Blind test</span>}
+                  {q.allowMultipleAttempts && <span className="inline-flex items-center gap-1 text-amber-600 font-medium">↻ Tentatives multiples</span>}
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
@@ -380,6 +383,7 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
               setForm((f) => ({
                 ...f,
                 type: newType,
+                allowMultipleAttempts: newType === "FREE_TEXT" ? f.allowMultipleAttempts : false,
                 answers:
                   newType === "FREE_TEXT"
                     ? [{ text: "", isCorrect: true, lenient: false }]
@@ -412,6 +416,21 @@ function QuestionForm({ form, setForm, updateAnswer, addAnswer, removeAnswer, on
           />
         </div>
       </div>
+
+      {form.type === "FREE_TEXT" && (
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none bg-white border rounded-lg px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={form.allowMultipleAttempts}
+            onChange={(e) => setForm((f) => ({ ...f, allowMultipleAttempts: e.target.checked }))}
+            className="flex-shrink-0"
+          />
+          <span>
+            Autoriser plusieurs tentatives
+            <span className="text-gray-400"> — −10 % des points par mauvaise réponse</span>
+          </span>
+        </label>
+      )}
 
       <div>
         <label className="text-xs text-gray-500 block mb-2">

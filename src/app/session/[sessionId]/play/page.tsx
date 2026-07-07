@@ -10,11 +10,12 @@ type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT";
 interface Question {
   id: string; text: string; imageUrl?: string | null; audioPreviewUrl?: string | null;
   type: QuestionType; duration: number; points: number; index: number; total: number;
+  allowMultipleAttempts?: boolean;
   answers: { id: string; text: string }[];
 }
 interface QuestionResult {
   question: { id: string; text: string; imageUrl?: string | null; type: QuestionType; answers: { id: string; text: string; isCorrect: boolean }[] };
-  playerAnswers: { playerId: string; answer: string; isCorrect: boolean; pointsEarned: number }[];
+  playerAnswers: { playerId: string; answer: string; isCorrect: boolean; pointsEarned: number; wrongAttempts: number }[];
   leaderboard: { id: string; nickname: string; score: number; rank: number }[];
   isLastQuestion: boolean;
 }
@@ -39,9 +40,11 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
   const [freeText, setFreeText] = useState("");
   const [myId, setMyId] = useState("");
   const [myNickname, setMyNickname] = useState("");
-  const [myResult, setMyResult] = useState<{ isCorrect: boolean; pointsEarned: number } | null>(null);
+  const [myResult, setMyResult] = useState<{ isCorrect: boolean; pointsEarned: number; wrongAttempts: number } | null>(null);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [myChosenAnswerTexts, setMyChosenAnswerTexts] = useState<string[]>([]);
+  const [wrongInfo, setWrongInfo] = useState<{ wrongAttempts: number; potentialPoints: number } | null>(null);
+  const [awaitingResult, setAwaitingResult] = useState(false);
   const [blockedAudioUrl, setBlockedAudioUrl] = useState<string | null>(null);
   const playerIdRef = useRef("");
   const nicknameRef = useRef("");
@@ -78,10 +81,21 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
       setFreeText("");
       setMyResult(null);
       setMyChosenAnswerTexts([]);
+      setWrongInfo(null);
+      setAwaitingResult(false);
       setPhase("question");
     });
 
-    socket.on("answer:received", () => setPhase("answered"));
+    socket.on("answer:received", () => {
+      setAwaitingResult(false);
+      setPhase("answered");
+    });
+
+    socket.on("answer:wrong", (info: { wrongAttempts: number; potentialPoints: number }) => {
+      setWrongInfo(info);
+      setAwaitingResult(false);
+      setFreeText("");
+    });
 
     socket.on("question:ended", (qResult: QuestionResult) => {
       audioRef.current?.pause();
@@ -90,7 +104,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
       setResult(qResult);
       const me = qResult.playerAnswers.find((pa) => pa.playerId === playerIdRef.current);
       const rank = qResult.leaderboard.find((p) => p.nickname === nicknameRef.current)?.rank ?? null;
-      setMyResult(me ? { isCorrect: me.isCorrect, pointsEarned: me.pointsEarned } : { isCorrect: false, pointsEarned: 0 });
+      setMyResult(me ? { isCorrect: me.isCorrect, pointsEarned: me.pointsEarned, wrongAttempts: me.wrongAttempts } : { isCorrect: false, pointsEarned: 0, wrongAttempts: 0 });
       setMyRank(rank);
 
       if (me?.answer) {
@@ -130,6 +144,7 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
       audioRef.current = null;
       socket.off("question:started");
       socket.off("answer:received");
+      socket.off("answer:wrong");
       socket.off("question:ended");
       socket.off("quiz:finished");
       socket.off("player:rejoined");
@@ -172,7 +187,14 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
       answer = selected;
     }
     getSocket().emit("player:submit-answer", { sessionPlayerId: myId, questionId: question.id, answer });
-    setPhase("answered");
+
+    // En mode multi-tentatives, on attend la réponse du serveur : si c'est faux,
+    // le joueur reste sur la question pour réessayer (événement answer:wrong).
+    if (question.type === "FREE_TEXT" && question.allowMultipleAttempts) {
+      setAwaitingResult(true);
+    } else {
+      setPhase("answered");
+    }
   }
 
   function proxyAudio(url: string) {
@@ -248,19 +270,30 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
             {/* Zone de réponses */}
             {question.type === "FREE_TEXT" ? (
               <>
+                {wrongInfo && (
+                  <div className="bg-red-500/15 border border-red-500/40 rounded-2xl px-4 py-3 text-center">
+                    <p className="text-red-300 font-bold">✗ Mauvaise réponse, réessaie !</p>
+                  </div>
+                )}
+                {question.allowMultipleAttempts && !wrongInfo && (
+                  <p className="text-center text-gray-500 text-xs">
+                    Plusieurs essais autorisés · −10 % par erreur
+                  </p>
+                )}
                 <input
                   value={freeText}
                   onChange={(e) => setFreeText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitAnswer()}
+                  onKeyDown={(e) => e.key === "Enter" && !awaitingResult && submitAnswer()}
                   placeholder="Ta réponse…"
-                  className="w-full bg-gray-800 border-2 border-gray-700 focus:border-blue-500 rounded-2xl px-4 py-4 text-white text-lg outline-none"
+                  disabled={awaitingResult}
+                  className="w-full bg-gray-800 border-2 border-gray-700 focus:border-blue-500 rounded-2xl px-4 py-4 text-white text-lg outline-none disabled:opacity-50"
                 />
                 <button
                   onClick={submitAnswer}
-                  disabled={!freeText.trim()}
+                  disabled={!freeText.trim() || awaitingResult}
                   className="w-full bg-blue-500 active:bg-blue-600 disabled:opacity-40 text-white font-bold py-5 rounded-2xl text-lg"
                 >
-                  Valider
+                  {awaitingResult ? "Vérification…" : "Valider"}
                 </button>
               </>
             ) : (
@@ -315,6 +348,9 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
             <p className="font-black text-xl">{myResult?.isCorrect ? "Bonne réponse !" : "Mauvaise réponse"}</p>
             <div className="flex justify-center gap-4 mt-1 text-sm opacity-90">
               {myResult?.isCorrect && <span>+{myResult.pointsEarned} pts</span>}
+              {(myResult?.wrongAttempts ?? 0) > 0 && (
+                <span>{(myResult?.wrongAttempts ?? 0) + (myResult?.isCorrect ? 1 : 0)} essais</span>
+              )}
               {myRank && <span>#{myRank}</span>}
             </div>
           </div>
@@ -388,6 +424,9 @@ export default function PlayerPlayPage({ params }: { params: Promise<{ sessionId
                       {answerText ? (
                         <span className={`text-xs ${pa?.isCorrect ? "text-green-400" : "text-red-400"}`}>
                           {pa?.isCorrect ? "✓" : "✗"} {answerText}
+                          {(pa?.wrongAttempts ?? 0) > 0 && (
+                            <span className="text-gray-500"> · {(pa?.wrongAttempts ?? 0) + (pa?.isCorrect ? 1 : 0)} essais</span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-600 italic">pas de réponse</span>

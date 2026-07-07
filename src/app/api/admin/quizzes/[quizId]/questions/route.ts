@@ -7,7 +7,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ quizId:
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { quizId } = await params;
-  const { text, imageUrl, deezerTrackId, audioPreviewUrl, type, duration, points, answers } = await req.json();
+  const { text, imageUrl, deezerTrackId, audioPreviewUrl, type, duration, points, answers, allowMultipleAttempts } = await req.json();
 
   if (!text?.trim()) return NextResponse.json({ error: "Texte requis" }, { status: 400 });
 
@@ -24,6 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ quizId:
       order: count,
       duration: duration ?? 30,
       points: points ?? 100,
+      allowMultipleAttempts: type === "FREE_TEXT" ? (allowMultipleAttempts ?? false) : false,
       answers: {
         create: (answers ?? []).map((a: { text: string; isCorrect: boolean; lenient?: boolean }) => ({
           text: a.text,

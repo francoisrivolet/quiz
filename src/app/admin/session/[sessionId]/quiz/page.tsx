@@ -12,7 +12,7 @@ interface Question {
 }
 interface QuestionResult {
   question: { id: string; text: string; imageUrl?: string | null; type: string; answers: { id: string; text: string; isCorrect: boolean }[] };
-  playerAnswers: { playerId: string; nickname: string; answer: string; isCorrect: boolean; pointsEarned: number }[];
+  playerAnswers: { playerId: string; nickname: string; answer: string; isCorrect: boolean; pointsEarned: number; wrongAttempts: number }[];
   leaderboard: { id: string; nickname: string; score: number; rank: number }[];
   isLastQuestion: boolean;
 }
@@ -197,6 +197,9 @@ export default function AdminQuizPage({ params }: { params: Promise<{ sessionId:
                       {answerText ? (
                         <span className={`text-xs ${pa?.isCorrect ? "text-green-400" : "text-red-400"}`}>
                           {pa?.isCorrect ? "✓" : "✗"} {answerText}
+                          {(pa?.wrongAttempts ?? 0) > 0 && (
+                            <span className="text-gray-500"> · {(pa?.wrongAttempts ?? 0) + (pa?.isCorrect ? 1 : 0)} essais</span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-600 italic">pas de réponse</span>
