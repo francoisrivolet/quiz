@@ -207,6 +207,15 @@ export default function QuizEditorPage({ params }: { params: Promise<{ quizId: s
         {quiz.questions.length === 0 && !showForm && (
           <p className="text-center text-gray-400 py-12">Aucune question. Ajoutez-en une !</p>
         )}
+
+        {quiz.questions.length > 0 && !showForm && (
+          <button
+            onClick={() => { setShowAdd(true); setEditingId(null); setForm(EMPTY_FORM); }}
+            className="w-full border-2 border-dashed border-blue-300 text-blue-600 hover:border-blue-500 hover:bg-blue-50 text-sm font-medium py-3 rounded-xl transition-colors"
+          >
+            + Question
+          </button>
+        )}
       </main>
     </div>
   );
